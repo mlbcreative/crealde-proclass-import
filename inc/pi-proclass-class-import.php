@@ -49,23 +49,52 @@
 			$proclass = $data;
 			
 			
-			
+            $checkArgs = array(
+                'post_type' => 'proclass',
+                'meta_key' => 'proclass_id',
+                'meta_value' => $proclass->ProgramId
+            );
+            
+            $existing = get_posts($checkArgs);
+            
+           
+            			
 			if ( !empty($proclass) ) {
 				
+				//Is this a new post or an existing one?
 				
-				
-				$args = array(
-				
-				'post_type' => 'proclass',
-				'post_title' => $proclass->Title,
-				'post_content' => $proclass->OnlineRegistrationDescription,
-				'post_status' => 'draft',
-					
-				);
+				if( !empty($existing) ) {
+                    $args = array(
+                        'ID' => $existing[0]->ID,
+                        'post_type' => 'proclass',
+                        'post_title' => $proclass->Title,
+                        'post_content' => $proclass->OnlineRegistrationDescription
+                    );
+                    
+                    $post = wp_update_post($args);
+                    //var_dump($post);
+                    
+                } else {
+                    $args = array(
+                        'post_type' => 'proclass',
+                        'post_title' => $proclass->Title,
+                        'post_content' => $proclass->OnlineRegistrationDescription,
+                        'post_status' => 'draft',
+                    );
+                    $post = wp_insert_post($args);
+                }
 				
 				//56152
 				
-				$post = wp_insert_post($args);
+                
+                
+//                if( !empty($existing) ) {
+//                    $post = wp_update_post($args);
+//                } else {
+//                    $post = wp_insert_post($args);
+//                }
+                
+				
 				
 				
 				//do some work on the program type to determine if its a class or workshop
@@ -97,12 +126,9 @@
 					break;
 					
 				}
-/*
-				if( $program_type != 'Workshop' || $program_type != 'Art Camp' || $program_type != 'Young Artist') {
-					$program_type = "Class";
-				}
-*/
 				
+                //ADD OR UPDATE ALL FIELDS
+                
 				//add the program type for filtering
 				update_field('program_type', $program_type, $post);
 				//add the semester id
@@ -124,7 +150,7 @@
 				//level update
 				update_field('level', $proclass->Level, $post);
 				//instructor
-				update_field('instructor_id', $proclass->ProgramInstructors[0]->InstructorId, $post);
+				//update_field('instructor_id', $proclass->ProgramInstructors[0]->InstructorId, $post);
 				//start time
 				update_field('start_time', $proclass->StartTime, $post);
 				//end time
@@ -133,12 +159,44 @@
 				update_field('proclass_id', $proclass->ProgramId, $post);
 				update_field('program_detail_link', 'https://reg125.imperisoft.com/Crealde/ProgramDetail/' . $proclass->ProgramDetailId . '/Registration.aspx', $post);
 				update_field('media_list', $proclass->MediaList, $post);
+                update_field('registration_count', $proclass->NumberRegistered, $post);
+                update_field('wait_list_count', $proclass->NumberWaitlisted, $post);
+                update_field('duration', $proclass->NumberOfWeeks, $post);
+                update_field('max_students', $proclass->NumberOfSeats, $post);
+                
+                //day of week
+                
+                $classDay = "";
+                
+                if($proclass->MeetOnMonday == true) : $classDay = "Monday";  endif;
+                if($proclass->MeetOnTuesday == true) : $classDay = "Tuesday";  endif;
+                if($proclass->MeetOnWednesday == true) : $classDay = "Wednesday";  endif;
+                if($proclass->MeetOnThursday == true) : $classDay = "Thursday";  endif;
+                if($proclass->MeetOnFriday == true) : $classDay = "Friday";  endif;
+                if($proclass->MeetOnSaturday == true) : $classDay = "Saturday";  endif;
+                if($proclass->MeetOnSunday == true) : $classDay = "Sunday";  endif;
+                
+                update_field('days_available', $classDay, $post);
+                
+                
+                $inIds = "";
+                
+                for($i = 0; $i < count($proclass->ProgramInstructors); $i++) {
+                    if( $i == 0) {
+                        $inIds .= $proclass->ProgramInstructors[$i]->InstructorId;
+                    } else {
+                        $inIds .= ',' . $proclass->ProgramInstructors[$i]->InstructorId;
+                    }
+                }
+                
+                update_field('instructor_id', $inIds, $post);
 				
 				//let's get the instructor First and Last Name
 				
-				$this->getInstructorMeta($proclass->ProgramInstructors[0]->InstructorId, $post, $proclass->Title, $this->classid);
+				//$this->getInstructorMeta($proclass->ProgramInstructors[0]->InstructorId, $post, $proclass->Title, $this->classid);
 				
-				
+				echo 'Successfully imported ' . $proclass->Title . ' (' . $proclass->ProgramId  . ') from ProClass.';
+                return;
 				
 			} else {
 				
